@@ -9,7 +9,6 @@
         .card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; margin-top: 0; }
         
-        /* 課程資訊區塊樣式 */
         .course-info { background: #f8f9fa; border-left: 4px solid #2b6cb0; padding: 15px 20px; margin-bottom: 25px; border-radius: 4px; font-size: 14px; }
         .course-info h3 { margin: 0 0 10px 0; color: #2b6cb0; font-size: 16px; }
         .course-info p { margin: 6px 0; }
@@ -27,16 +26,15 @@
 <body>
 
 <div class="card">
-    <h2>會議出席與餐點調查</h2>
+    <h2 id="pageTitle">會議出席與餐點調查</h2>
 
-    <!-- 📌 課程/會議資訊區塊：您未來可以直接在這裡修改文字內容 -->
     <div class="course-info">
         <h3>課程相關資訊</h3>
-        <p><strong>課程名稱：</strong> 這裡填寫您的課程名稱（例：AI 智慧應用實務訓練班）</p>
-        <p><strong>課程時間：</strong> 115年6月15日（星期一）09:00 ~ 12:00</p>
-        <p><strong>課程地點：</strong> 總局 3 樓電腦教室</p>
-        <p><strong>上課對象：</strong> 本機關全體資訊與業務相關同仁</p>
-        <p><strong>相關說明：</strong> 請於期限內完成線上報名與便當、飲料選擇。若需請假請另行通知承辦人。</p>
+        <p><strong>課程名稱：</strong> <span id="configCourseName">讀取中...</span></p>
+        <p><strong>課程時間：</strong> <span id="configCourseTime">讀取中...</span></p>
+        <p><strong>課程地點：</strong> <span id="configCourseLocation">讀取中...</span></p>
+        <p><strong>上課對象：</strong> <span id="configCourseAudience">讀取中...</span></p>
+        <p><strong>相關說明：</strong> <span id="configCourseNotice">讀取中...</span></p>
     </div>
 
     <form id="rsvpForm">
@@ -103,16 +101,38 @@
 </div>
 
 <script>
-    // ⚠️ 請確保這裡維持您正確的 Google Apps Script 網頁應用程式網址
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwzgDs529yNF8YGZcCu7DRS1eOXWIZHda1gqf-J-WEfOJO_9GRxm2Itcha6gjh-FW-s/exec";
+    // ⚙️ 設定預設的活動資料夾（如果網址沒有指定 ?event=資料夾名稱，就會讀這個）
+    const DEFAULT_EVENT = "2026-06-15";
+
+    let currentScriptUrl = "";
 
     window.addEventListener('DOMContentLoaded', async () => {
-        await loadConfig();
+        // 從網址取得 ?event=參數，若無則使用預設資料夾
+        const urlParams = new URLSearchParams(window.location.search);
+        const folder = urlParams.get('event') || DEFAULT_EVENT;
+
+        await loadEventConfigs(folder);
     });
 
-    async function loadConfig() {
+    async function loadEventConfigs(folder) {
         try {
-            const mealRes = await fetch('meals.json');
+            // 1. 讀取該資料夾底下的 config.json
+            const configRes = await fetch(`${folder}/config.json`);
+            if (!configRes.ok) throw new Error("找不到該場活動的設定檔");
+            const config = await configRes.json();
+            
+            // 儲存該場活動專屬的 Google 試算表 Web App 網址
+            currentScriptUrl = config.scriptUrl;
+
+            document.getElementById('configCourseName').textContent = config.courseName;
+            document.getElementById('configCourseTime').textContent = config.courseTime;
+            document.getElementById('configCourseLocation').textContent = config.courseLocation;
+            document.getElementById('configCourseAudience').textContent = config.courseAudience;
+            document.getElementById('configCourseNotice').textContent = config.courseNotice;
+            document.getElementById('pageTitle').textContent = config.courseName + " - 出席與餐點調查";
+
+            // 2. 讀取該資料夾底下的 meals.json
+            const mealRes = await fetch(`${folder}/meals.json`);
             const meals = await mealRes.json();
             const mealSelect = document.getElementById('mealSelect');
             meals.forEach(item => {
@@ -122,7 +142,8 @@
                 mealSelect.appendChild(opt);
             });
 
-            const drinkRes = await fetch('drinks.json');
+            // 3. 讀取該資料夾底下的 drinks.json
+            const drinkRes = await fetch(`${folder}/drinks.json`);
             const drinks = await drinkRes.json();
             const drinkSelect = document.getElementById('drinkSelect');
             
@@ -140,6 +161,7 @@
             });
         } catch (error) {
             console.error('讀取設定檔失敗', error);
+            alert('無法載入活動設定，請確認網址或資料夾名稱是否正確。');
         }
     }
 
@@ -168,6 +190,11 @@
     document.getElementById('rsvpForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
+        if (!currentScriptUrl) {
+            alert('系統尚未設定對應的後端表單網址！');
+            return;
+        }
+
         const submitBtn = document.getElementById('submitBtn');
         const loading = document.getElementById('loading');
         
@@ -194,14 +221,14 @@
             name: document.getElementById('name').value,
             extension: document.getElementById('extension').value,
             attendance: attendance,
-            meal: attendance === '參加' ? document.getElementById('mealSelect').value : '未參加',
+            meal: attendance === '參加' ? document.getElementById('mealSelect'].value : '未參加',
             drink: drinkVal,
             iceSugar: iceSugarVal,
             remark: document.getElementById('remark').value || '無'
         };
 
         try {
-            await fetch(SCRIPT_URL, {
+            await fetch(currentScriptUrl, {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
