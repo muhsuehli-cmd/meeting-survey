@@ -3,11 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>會議出席與點餐調查</title>
+    <title>會議與課程出席調查</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; background: #fdfbf7; color: #333; }
         .card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        h2 { text-align: center; color: #2c3e50; margin-bottom: 25px; }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; margin-top: 0; }
+        
+        /* 課程資訊區塊樣式 */
+        .course-info { background: #f8f9fa; border-left: 4px solid #2b6cb0; padding: 15px 20px; margin-bottom: 25px; border-radius: 4px; font-size: 14px; }
+        .course-info h3 { margin: 0 0 10px 0; color: #2b6cb0; font-size: 16px; }
+        .course-info p { margin: 6px 0; }
+
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
         input[type="text"], select, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
@@ -22,6 +28,17 @@
 
 <div class="card">
     <h2>會議出席與餐點調查</h2>
+
+    <!-- 📌 課程/會議資訊區塊：您未來可以直接在這裡修改文字內容 -->
+    <div class="course-info">
+        <h3>課程相關資訊</h3>
+        <p><strong>課程名稱：</strong> 這裡填寫您的課程名稱（例：AI 智慧應用實務訓練班）</p>
+        <p><strong>課程時間：</strong> 115年6月15日（星期一）09:00 ~ 12:00</p>
+        <p><strong>課程地點：</strong> 總局 3 樓電腦教室</p>
+        <p><strong>上課對象：</strong> 本機關全體資訊與業務相關同仁</p>
+        <p><strong>相關說明：</strong> 請於期限內完成線上報名與便當、飲料選擇。若需請假請另行通知承辦人。</p>
+    </div>
+
     <form id="rsvpForm">
         <div class="form-group">
             <label>姓名：</label>
@@ -86,7 +103,7 @@
 </div>
 
 <script>
-    // ⚠️ 請將下方引號內的網址替換為您剛剛建立的 Google Apps Script 網頁應用程式網址
+    // ⚠️ 請確保這裡維持您正確的 Google Apps Script 網頁應用程式網址
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwzgDs529yNF8YGZcCu7DRS1eOXWIZHda1gqf-J-WEfOJO_9GRxm2Itcha6gjh-FW-s/exec";
 
     window.addEventListener('DOMContentLoaded', async () => {
@@ -95,7 +112,6 @@
 
     async function loadConfig() {
         try {
-            // 讀取餐盒設定檔 (meals.json)
             const mealRes = await fetch('meals.json');
             const meals = await mealRes.json();
             const mealSelect = document.getElementById('mealSelect');
@@ -106,7 +122,6 @@
                 mealSelect.appendChild(opt);
             });
 
-            // 讀取飲料設定檔 (drinks.json)
             const drinkRes = await fetch('drinks.json');
             const drinks = await drinkRes.json();
             const drinkSelect = document.getElementById('drinkSelect');
@@ -179,7 +194,7 @@
             name: document.getElementById('name').value,
             extension: document.getElementById('extension').value,
             attendance: attendance,
-            meal: attendance === '参加' ? document.getElementById('mealSelect').value : '未參加',
+            meal: attendance === '參加' ? document.getElementById('mealSelect').value : '未參加',
             drink: drinkVal,
             iceSugar: iceSugarVal,
             remark: document.getElementById('remark').value || '無'
@@ -188,7 +203,7 @@
         try {
             await fetch(SCRIPT_URL, {
                 method: 'POST',
-                mode: 'no-cors', // Google Apps Script 跨域標準寫法
+                mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
