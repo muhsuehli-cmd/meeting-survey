@@ -1,0 +1,5 @@
+[
+  { "name": "高山烏龍茶", "customizable": true },
+  { "name": "古早味紅茶", "customizable": true },
+  { "name": "瓶裝礦泉水", "customizable": false }
+]
