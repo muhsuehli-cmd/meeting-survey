@@ -112,6 +112,7 @@
 
     async function loadEventConfigs(folder) {
         try {
+            // 1. 讀取該場活動的 config.json
             const configRes = await fetch(`${folder}/config.json`);
             if (!configRes.ok) throw new Error("找不到該場活動的設定檔");
             const config = await configRes.json();
@@ -125,35 +126,37 @@
             document.getElementById('configCourseNotice').textContent = config.courseNotice;
             document.getElementById('pageTitle').textContent = config.courseName + " - 出席與餐點調查";
 
-            const mealRes = await fetch(`${folder}/meals.json`);
-            const meals = await mealRes.json();
+            // 2. 直接透過 Google Apps Script 從試算表的「餐盒清單」與「飲料清單」分頁抓取選單資料
+            const menuRes = await fetch(currentScriptUrl);
+            const menuData = await menuRes.json();
+
+            // 填入餐盒選項
             const mealSelect = document.getElementById('mealSelect');
-            meals.forEach(item => {
+            menuData.meals.forEach(item => {
                 const opt = document.createElement('option');
                 opt.value = item.name;
                 opt.textContent = item.name + (item.price ? ` ($${item.price})` : '');
                 mealSelect.appendChild(opt);
             });
 
-            const drinkRes = await fetch(`${folder}/drinks.json`);
-            const drinks = await drinkRes.json();
+            // 填入飲料選項
             const drinkSelect = document.getElementById('drinkSelect');
-            
             const defaultOpt = document.createElement('option');
             defaultOpt.value = "不須飲料";
             defaultOpt.textContent = "不須飲料";
             drinkSelect.appendChild(defaultOpt);
 
-            drinks.forEach(item => {
+            menuData.drinks.forEach(item => {
                 const opt = document.createElement('option');
                 opt.value = item.name;
                 opt.textContent = item.name;
-                opt.dataset.customizable = item.customizable !== false; 
+                opt.dataset.customizable = item.customizable; 
                 drinkSelect.appendChild(opt);
             });
+
         } catch (error) {
             console.error('讀取設定檔失敗', error);
-            alert('無法載入活動設定，請確認網址或資料夾名稱是否正確。');
+            alert('無法載入活動設定與選單，請確認網址或後端指令碼是否正確。');
         }
     }
 
