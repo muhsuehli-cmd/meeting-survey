@@ -5,34 +5,68 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>會議與課程出席調查</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; background: #fdfbf7; color: #333; }
-        .card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; margin-top: 0; }
+        /* 預設字體大小變數 */
+        :root {
+            --base-font-size: 14px;
+            --h2-font-size: 24px;
+            --card-padding: 30px;
+        }
+
+        /* 放大級別 1 (大字) */
+        body.font-large {
+            --base-font-size: 17px;
+            --h2-font-size: 28px;
+            --card-padding: 35px;
+        }
+
+        /* 放大級別 2 (特大字) */
+        body.font-xlarge {
+            --base-font-size: 20px;
+            --h2-font-size: 32px;
+            --card-padding: 40px;
+        }
+
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 650px; margin: 40px auto; padding: 20px; line-height: 1.6; background: #fdfbf7; color: #333; font-size: var(--base-font-size); transition: font-size 0.2s; }
         
-        .course-info { background: #f8f9fa; border-left: 4px solid #2b6cb0; padding: 15px 20px; margin-bottom: 25px; border-radius: 4px; font-size: 14px; }
-        .course-info h3 { margin: 0 0 10px 0; color: #2b6cb0; font-size: 16px; }
+        /* 字體切換按鈕列樣式 */
+        .font-switcher { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 15px; align-items: center; font-size: 13px; color: #666; }
+        .font-btn { background: #e2e8f0; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; color: #4a5568; transition: background 0.2s; }
+        .font-btn:hover, .font-btn.active { background: #2b6cb0; color: white; }
+
+        .card { background: #fff; padding: var(--card-padding); border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; margin-top: 0; font-size: var(--h2-font-size); }
+        
+        .course-info { background: #f8f9fa; border-left: 4px solid #2b6cb0; padding: 15px 20px; margin-bottom: 25px; border-radius: 4px; font-size: var(--base-font-size); }
+        .course-info h3 { margin: 0 0 10px 0; color: #2b6cb0; font-size: calc(var(--base-font-size) + 2px); }
         .course-info p { margin: 6px 0; }
 
         .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: var(--base-font-size); }
         
-        /* 紅色必填星號樣式 */
         .required::after {
             content: " *";
             color: #e53e3e;
         }
 
-        input[type="text"], select, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        input[type="text"], select, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: var(--base-font-size); }
         .hidden { display: none; }
-        button { background: #2b6cb0; color: white; border: none; padding: 12px 20px; width: 100%; font-size: 16px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
-        button:hover { background: #2c5282; }
-        button:disabled { background: #cbd5e0; cursor: not-allowed; }
-        #loading { text-align: center; color: #666; font-size: 14px; margin-top: 10px; display: none; }
+        button[type="submit"] { background: #2b6cb0; color: white; border: none; padding: 12px 20px; width: 100%; font-size: calc(var(--base-font-size) + 2px); font-weight: bold; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+        button[type="submit"]:hover { background: #2c5282; }
+        button[type="submit"]:disabled { background: #cbd5e0; cursor: not-allowed; }
+        #loading { text-align: center; color: #666; font-size: var(--base-font-size); margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
 
 <div class="card">
+    <!-- 字體大小切換按鈕區塊 -->
+    <div class="font-switcher">
+        <span>字體大小：</span>
+        <button type="button" class="font-btn active" onclick="setFontSize('normal', this)">標準</button>
+        <button type="button" class="font-btn" onclick="setFontSize('large', this)">大</button>
+        <button type="button" class="font-btn" onclick="setFontSize('xlarge', this)">特大</button>
+    </div>
+
     <h2 id="pageTitle">會議出席與餐點調查</h2>
 
     <div class="course-info">
@@ -110,6 +144,22 @@
 </div>
 
 <script>
+    // 字體大小切換功能
+    function setFontSize(size, btn) {
+        const body = document.body;
+        body.classList.remove('font-large', 'font-xlarge');
+        
+        if (size === 'large') {
+            body.classList.add('font-large');
+        } else if (size === 'xlarge') {
+            body.classList.add('font-xlarge');
+        }
+
+        // 切換按鈕的高亮狀態
+        document.querySelectorAll('.font-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
     const DEFAULT_EVENT = "2026-06-15";
     let currentScriptUrl = "";
     let menuCache = { meals: [], drinks: [] };
@@ -138,7 +188,6 @@
             const menuRes = await fetch(currentScriptUrl);
             menuCache = await menuRes.json();
 
-            // 填入餐盒選項
             const mealSelect = document.getElementById('mealSelect');
             menuCache.meals.forEach(item => {
                 const opt = document.createElement('option');
@@ -147,7 +196,6 @@
                 mealSelect.appendChild(opt);
             });
 
-            // 填入飲料選項（先放從試算表抓出來的飲料）
             const drinkSelect = document.getElementById('drinkSelect');
             menuCache.drinks.forEach(item => {
                 const opt = document.createElement('option');
@@ -157,7 +205,6 @@
                 drinkSelect.appendChild(opt);
             });
 
-            // 強制將「不須飲料」放到最下方
             const defaultOpt = document.createElement('option');
             defaultOpt.value = "不須飲料";
             defaultOpt.textContent = "不須飲料";
