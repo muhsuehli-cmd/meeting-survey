@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>會議出席與點餐調查</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; background: #fdfbf7; color: #333; }
+        .card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
+        input[type="text"], select, textarea { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        .hidden { display: none; }
+        button { background: #2b6cb0; color: white; border: none; padding: 12px 20px; width: 100%; font-size: 16px; font-weight: bold; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #2c5282; }
+        button:disabled { background: #cbd5e0; cursor: not-allowed; }
+        #loading { text-align: center; color: #666; font-size: 14px; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>會議出席與餐點調查</h2>
+    <form id="rsvpForm">
+        <div class="form-group">
+            <label>姓名：</label>
+            <input type="text" id="name" required placeholder="請輸入您的姓名">
+        </div>
+
+        <div class="form-group">
+            <label>分機：</label>
+            <input type="text" id="extension" required placeholder="請輸入您的分機號碼">
+        </div>
+
+        <div class="form-group">
+            <label>是否出席：</label>
+            <select id="attendance" required onchange="toggleOrderSection()">
+                <option value="">請選擇</option>
+                <option value="參加">參加</option>
+                <option value="不參加">不參加</option>
+            </select>
+        </div>
+
+        <div id="orderSection" class="hidden">
+            <div class="form-group">
+                <label>餐盒選擇：</label>
+                <select id="mealSelect"></select>
+            </div>
+
+            <div class="form-group">
+                <label>飲料選擇：</label>
+                <select id="drinkSelect" onchange="toggleDrinkOptions()"></select>
+            </div>
+
+            <div id="drinkOptions" class="form-group hidden">
+                <label>冰塊甜度：</label>
+                <div style="display: flex; gap: 10px;">
+                    <select id="iceSelect">
+                        <option value="正常冰">正常冰</option>
+                        <option value="少冰">少冰</option>
+                        <option value="微冰">微冰</option>
+                        <option value="去冰">去冰</option>
+                        <option value="常溫">常溫</option>
+                        <option value="熱">熱</option>
+                    </select>
+                    <select id="sugarSelect">
+                        <option value="正常甜">正常甜</option>
+                        <option value="少糖">少糖</option>
+                        <option value="半糖">半糖</option>
+                        <option value="微糖">微糖</option>
+                        <option value="無糖">無糖</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>備註說明（過敏原、特殊需求等）：</label>
+                <textarea id="remark" rows="3" placeholder="若無則免填"></textarea>
+            </div>
+        </div>
+
+        <button type="submit" id="submitBtn">確認送出</button>
+        <div id="loading">資料傳送中，請稍候...</div>
+    </form>
+</div>
+
+<script>
+    // ⚠️ 請將下方引號內的網址替換為您剛剛建立的 Google Apps Script 網頁應用程式網址
+    const SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL";
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        await loadConfig();
+    });
+
+    async function loadConfig() {
+        try {
+            // 讀取餐盒設定檔 (meals.json)
+            const mealRes = await fetch('meals.json');
+            const meals = await mealRes.json();
+            const mealSelect = document.getElementById('mealSelect');
+            meals.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.name;
+                opt.textContent = item.name + (item.price ? ` ($${item.price})` : '');
+                mealSelect.appendChild(opt);
+            });
+
+            // 讀取飲料設定檔 (drinks.json)
+            const drinkRes = await fetch('drinks.json');
+            const drinks = await drinkRes.json();
+            const drinkSelect = document.getElementById('drinkSelect');
+            
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = "不須飲料";
+            defaultOpt.textContent = "不須飲料";
+            drinkSelect.appendChild(defaultOpt);
+
+            drinks.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.name;
+                opt.textContent = item.name;
+                opt.dataset.customizable = item.customizable !== false; 
+                drinkSelect.appendChild(opt);
+            });
+        } catch (error) {
+            console.error('讀取設定檔失敗', error);
+        }
+    }
+
+    function toggleOrderSection() {
+        const attendance = document.getElementById('attendance').value;
+        const orderSection = document.getElementById('orderSection');
+        if (attendance === '參加') {
+            orderSection.classList.remove('hidden');
+        } else {
+            orderSection.classList.add('hidden');
+        }
+    }
+
+    function toggleDrinkOptions() {
+        const drinkSelect = document.getElementById('drinkSelect');
+        const selectedOpt = drinkSelect.options[drinkSelect.selectedIndex];
+        const drinkOptions = document.getElementById('drinkOptions');
+        
+        if (drinkSelect.value !== "不須飲料" && selectedOpt.dataset.customizable !== "false") {
+            drinkOptions.classList.remove('hidden');
+        } else {
+            drinkOptions.classList.add('hidden');
+        }
+    }
+
+    document.getElementById('rsvpForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        
+        submitBtn.disabled = true;
+        loading.style.display = 'block';
+
+        const attendance = document.getElementById('attendance').value;
+        let drinkVal = "無";
+        let iceSugarVal = "無";
+
+        if (attendance === '參加') {
+            const selectedDrink = document.getElementById('drinkSelect').value;
+            const drinkOptionsHidden = document.getElementById('drinkOptions').classList.contains('hidden');
+            
+            if (selectedDrink !== "不須飲料" && !drinkOptionsHidden) {
+                const ice = document.getElementById('iceSelect').value;
+                const sugar = document.getElementById('sugarSelect').value;
+                iceSugarVal = `${ice} / ${sugar}`;
+            }
+            drinkVal = selectedDrink;
+        }
+
+        const formData = {
+            name: document.getElementById('name').value,
+            extension: document.getElementById('extension').value,
+            attendance: attendance,
+            meal: attendance === '参加' ? document.getElementById('mealSelect').value : '未參加',
+            drink: drinkVal,
+            iceSugar: iceSugarVal,
+            remark: document.getElementById('remark').value || '無'
+        };
+
+        try {
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', // Google Apps Script 跨域標準寫法
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            alert('登記成功！感謝您的填寫。');
+            document.getElementById('rsvpForm').reset();
+            toggleOrderSection();
+            toggleDrinkOptions();
+        } catch (error) {
+            console.error('送出失敗', error);
+            alert('送出失敗，請稍後再試或聯繫管理員。');
+        } finally {
+            submitBtn.disabled = false;
+            loading.style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>
