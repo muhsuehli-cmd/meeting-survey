@@ -103,6 +103,7 @@
 <script>
     const DEFAULT_EVENT = "2026-06-15";
     let currentScriptUrl = "";
+    let menuCache = { meals: [], drinks: [] }; // 用來暫存抓到的價格資料
 
     window.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -112,7 +113,6 @@
 
     async function loadEventConfigs(folder) {
         try {
-            // 1. 讀取該場活動的 config.json
             const configRes = await fetch(`${folder}/config.json`);
             if (!configRes.ok) throw new Error("找不到該場活動的設定檔");
             const config = await configRes.json();
@@ -126,30 +126,30 @@
             document.getElementById('configCourseNotice').textContent = config.courseNotice;
             document.getElementById('pageTitle').textContent = config.courseName + " - 出席與餐點調查";
 
-            // 2. 直接透過 Google Apps Script 從試算表的「餐盒清單」與「飲料清單」分頁抓取選單資料
+            // 從 GAS 抓取選單
             const menuRes = await fetch(currentScriptUrl);
-            const menuData = await menuRes.json();
+            menuCache = await menuRes.json();
 
-            // 填入餐盒選項
+            // 填入餐盒選項（有價錢才顯示 $）
             const mealSelect = document.getElementById('mealSelect');
-            menuData.meals.forEach(item => {
+            menuCache.meals.forEach(item => {
                 const opt = document.createElement('option');
                 opt.value = item.name;
-                opt.textContent = item.name + (item.price ? ` ($${item.price})` : '');
+                opt.textContent = (item.price !== null && !isNaN(item.price)) ? `${item.name} ($${item.price})` : item.name;
                 mealSelect.appendChild(opt);
             });
 
-            // 填入飲料選項
+            // 填入飲料選項（有價錢才顯示 $）
             const drinkSelect = document.getElementById('drinkSelect');
             const defaultOpt = document.createElement('option');
             defaultOpt.value = "不須飲料";
             defaultOpt.textContent = "不須飲料";
             drinkSelect.appendChild(defaultOpt);
 
-            menuData.drinks.forEach(item => {
+            menuCache.drinks.forEach(item => {
                 const opt = document.createElement('option');
                 opt.value = item.name;
-                opt.textContent = item.name;
+                opt.textContent = (item.price !== null && !isNaN(item.price)) ? `${item.name} ($${item.price})` : item.name;
                 opt.dataset.customizable = item.customizable; 
                 drinkSelect.appendChild(opt);
             });
@@ -197,27 +197,42 @@
         loading.style.display = 'block';
 
         const attendance = document.getElementById('attendance').value;
+        let mealVal = "未參加";
+        let mealPriceVal = 0;
         let drinkVal = "無";
+        let drinkPriceVal = 0;
         let iceSugarVal = "無";
 
         if (attendance === '參加') {
+            mealVal = document.getElementById('mealSelect').value;
+            // 找出該餐盒對應的價格
+            const foundMeal = menuCache.meals.find(m => m.name === mealVal);
+            if (foundMeal && foundMeal.price) mealPriceVal = foundMeal.price;
+
             const selectedDrink = document.getElementById('drinkSelect').value;
             const drinkOptionsHidden = document.getElementById('drinkOptions').classList.contains('hidden');
             
-            if (selectedDrink !== "不須飲料" && !drinkOptionsHidden) {
-                const ice = document.getElementById('iceSelect').value;
-                const sugar = document.getElementById('sugarSelect').value;
-                iceSugarVal = `${ice} / ${sugar}`;
+            if (selectedDrink !== "不須飲料") {
+                drinkVal = selectedDrink;
+                const foundDrink = menuCache.drinks.find(d => d.name === selectedDrink);
+                if (foundDrink && foundDrink.price) drinkPriceVal = foundDrink.price;
+
+                if (!drinkOptionsHidden) {
+                    const ice = document.getElementById('iceSelect').value;
+                    const sugar = document.getElementById('sugarSelect').value;
+                    iceSugarVal = `${ice} / ${sugar}`;
+                }
             }
-            drinkVal = selectedDrink;
         }
 
         const formData = {
             name: document.getElementById('name').value,
             extension: document.getElementById('extension').value,
             attendance: attendance,
-            meal: attendance === '參加' ? document.getElementById('mealSelect').value : '未參加',
+            meal: mealVal,
+            mealPrice: mealPriceVal,
             drink: drinkVal,
+            drinkPrice: drinkPriceVal,
             iceSugar: iceSugarVal,
             remark: document.getElementById('remark').value || '無'
         };
@@ -232,7 +247,7 @@
 
             alert('登記成功！感謝您的填寫。');
             document.getElementById('rsvpForm').reset();
-            toggleOrderSection();
+            toggleOrderSession();
             toggleDrinkOptions();
         } catch (error) {
             console.error('送出失敗', error);
