@@ -101,27 +101,21 @@
 </div>
 
 <script>
-    // ⚙️ 設定預設的活動資料夾（如果網址沒有指定 ?event=資料夾名稱，就會讀這個）
     const DEFAULT_EVENT = "2026-06-15";
-
     let currentScriptUrl = "";
 
     window.addEventListener('DOMContentLoaded', async () => {
-        // 從網址取得 ?event=參數，若無則使用預設資料夾
         const urlParams = new URLSearchParams(window.location.search);
         const folder = urlParams.get('event') || DEFAULT_EVENT;
-
         await loadEventConfigs(folder);
     });
 
     async function loadEventConfigs(folder) {
         try {
-            // 1. 讀取該資料夾底下的 config.json
             const configRes = await fetch(`${folder}/config.json`);
             if (!configRes.ok) throw new Error("找不到該場活動的設定檔");
             const config = await configRes.json();
             
-            // 儲存該場活動專屬的 Google 試算表 Web App 網址
             currentScriptUrl = config.scriptUrl;
 
             document.getElementById('configCourseName').textContent = config.courseName;
@@ -131,7 +125,6 @@
             document.getElementById('configCourseNotice').textContent = config.courseNotice;
             document.getElementById('pageTitle').textContent = config.courseName + " - 出席與餐點調查";
 
-            // 2. 讀取該資料夾底下的 meals.json
             const mealRes = await fetch(`${folder}/meals.json`);
             const meals = await mealRes.json();
             const mealSelect = document.getElementById('mealSelect');
@@ -142,7 +135,6 @@
                 mealSelect.appendChild(opt);
             });
 
-            // 3. 讀取該資料夾底下的 drinks.json
             const drinkRes = await fetch(`${folder}/drinks.json`);
             const drinks = await drinkRes.json();
             const drinkSelect = document.getElementById('drinkSelect');
@@ -221,7 +213,7 @@
             name: document.getElementById('name').value,
             extension: document.getElementById('extension').value,
             attendance: attendance,
-            meal: attendance === '參加' ? document.getElementById('mealSelect'].value : '未參加',
+            meal: attendance === '參加' ? document.getElementById('mealSelect').value : '未參加',
             drink: drinkVal,
             iceSugar: iceSugarVal,
             remark: document.getElementById('remark').value || '無'
